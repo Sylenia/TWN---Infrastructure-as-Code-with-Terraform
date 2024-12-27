@@ -9,6 +9,7 @@ variable avail_zone {}
 variable my_ip {}
 variable instance_type {}
 variable public_key_location {}
+variable private_key_location {}
 
 resource "aws_vpc" "myapp-vpc" {
   cidr_block = var.vpc_cidr_blocks
@@ -119,6 +120,26 @@ resource "aws_instance" "myapp_server" {
   user_data = file("entry-script.sh")
 
   user_data_replace_on_change = true
+
+  connection {
+    type = "ssh"
+    host = self.public_ip
+    user = "ec2-user"
+    private_key = file(var.private_key_location)
+  }
+
+  provisioner "file" {
+    source = "entry-script.sh"
+    destination = "/home/ec2-user/entry-script-on-ec2.sh"
+  }
+
+  provisioner "remote-exec" {
+    script = "entry-script.sh"
+  }
+
+  provisioner "local-exec" {
+    command = "echo ${self.public_ip} > output.txt"
+  }
 
   tags = {
     Name: "${var.env_prefix}-server"
